@@ -8,15 +8,27 @@ An immersive, real-time **Augmented Reality (AR)** web experience built with **M
 
 ## ✨ The Emotional Spectrum
 
-| Corps | Emotion | Constructs | Oath |
+| Corps | Emotion | Constructs | Canonical Oath |
 | --- | --- | --- | --- |
-| 🟢 Green Lantern | **Willpower** | Giant Fist, Aegis Shield, Power Battery, Broadsword, Gatling Cannon | *In brightest day, in blackest night…* |
-| 🔵 Blue Lantern | **Hope** | Hope Lantern, Hope Shield, Anchor, Lifeline, Fountain of Hope | *In broken hope, in deepest night…* |
-| 🔴 Red Lantern | **Rage** | Flame Fist, Fire Cannon, Barb Lasso, Blazing Shield, Meteor | *I burn. I burn…* |
-| 🟡 Yellow Lantern | **Fear** | Hand of Fear, Fear Grenade, Slithering Abyss, Shock Beat, Shrieking Shriek | *Fear is the master. Fear is my friend…* |
-| ⚪ White Lantern | **Life** | Hand of Life, Healing Glove, Life Cannon, Protective Aura, Wave of Life | *Wherever life blooms…* |
-| ⚫ Black Lantern | **Death** | Hand of Death, Energy Scythe, Black Reaper, Void Bubble, Blackout | *Death has a thousand faces. Beware mine.* |
-| 🟠 Orange Lantern | **Avarice** | Hand of Avarice, Bludgeon, Rocket Fist, Golden Wrench, Money Cannon | *Mine. Mine…* |
+| Green Lantern | **Willpower** | Giant Fist, Aegis Shield, Power Battery, Broadsword, Gatling Cannon | *In brightest day, in blackest night, no evil shall escape my sight…* |
+| Blue Lantern | **Hope** | Hope Lantern, Hope Shield, Anchor, Lifeline, Fountain of Hope | *In fearful day, in raging night, with strong hearts full, our souls ignite…* |
+| Red Lantern | **Rage** | Flame Fist, Fire Cannon, Barb Lasso, Blazing Shield, Meteor | *With blood and rage of crimson red, ripped from a corpse so freshly dead…* |
+| Yellow Lantern | **Fear** | Hand of Fear, Fear Grenade, Slithering Abyss, Shock Beat, Shrieking Shriek | *In blackest day, in brightest night, beware your fears made into light…* |
+| White Lantern | **Life** | Hand of Life, Healing Glove, Life Cannon, Protective Aura, Wave of Life | *In brightest day, in darkest night, let my ring shine the brightest light…* |
+| Black Lantern | **Death** | Hand of Death, Energy Scythe, Black Reaper, Void Bubble, Blackout | *The Blackest Night falls from the skies, the darkness grows as all light dies…* |
+| Orange Lantern | **Avarice** | Hand of Avarice, Bludgeon, Rocket Fist, Golden Wrench, Money Cannon | *What's mine is mine and mine and mine…* |
+
+Each oath is the **canonical comic line**, spoken by a neural voice and cited in `js/corps.js`:
+
+| Corps | First appearance |
+| --- | --- |
+| Green | Green Lantern vol. 4 (1986) |
+| Yellow / Sinestro | Green Lantern vol. 4 #10 (May 2006) |
+| Red | Green Lantern vol. 4 #25 (January 2008) |
+| Black | Green Lantern: Secret Origin (2008) |
+| Blue | Green Lantern vol. 4 #36 (December 2008) |
+| Orange | Green Lantern vol. 4 #39 (April 2009) |
+| White | Blackest Night #7 (April 2010) |
 
 Switching corps is a single click (or **Q / E**) and rebuilds every colour-dependent subsystem: the 3D ring, the five constructs, the energy tether, the plasma particles, the hand-skeleton HUD, the reticle, the CSS theme, the oath narration and the attack sounds.
 
@@ -100,14 +112,14 @@ No 3D modelling code required — `constructs.js` compiles it.
 
 ## 🛠️ Regenerating the Oath Audio
 
-The oaths use Microsoft Edge Neural TTS. Each voice is pitched and paced to suit its emotion (Hope is airy, Rage shouts, Fear is a slow whisper, Death is hollow and low, Avarice is greedy and fast):
+The oaths use Microsoft Edge Neural TTS, speaking the canonical comic lines. Each voice is pitched and paced to suit its emotion (Hope is airy, Rage shouts, Fear is a slow menace, Death is hollow and low, Avarice is greedy and fast):
 
 ```
 pip install edge-tts
 python build_corps_oaths.py
 ```
 
-Subtitles are **not** hardcoded to fixed milliseconds. `audio.js` reads the real duration of the loaded track and distributes that corps' four lines across it, so re-voicing an oath can never desync the text.
+Subtitles are **not** hardcoded to fixed milliseconds. `audio.js` reads the real duration of the loaded track and distributes that corps' lines across it, so re-voicing an oath can never desync the text. It also handles oaths of differing length — Orange Lantern's is three lines, the rest are four.
 
 ---
 

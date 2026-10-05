@@ -719,64 +719,68 @@ const CORPS = {
     ...CORPS_PALETTES.blue,
     oath: {
       audio: 'audio/oath_blue_hope.mp3',
+      // Green Lantern vol. 4 #36 (Dec 2008) - Ganthet & Sayd
       lines: [
-        'In broken hope, in deepest night,',
-        'I shall shelter those who lack the light.',
-        "Let those who wield hope's gracious might,",
-        'Beware my power, Blue Lantern\u2019s light!'
+        'In fearful day, in raging night,',
+        'With strong hearts full, our souls ignite.',
+        'When all seems lost in the War of Light,',
+        'Look to the stars \u2014 for hope burns bright!'
       ],
-      lineWeights: [3.4, 3.6, 3.2, 3.6],
+      lineWeights: [2.8, 3.0, 3.2, 3.0],
       leadIn: 0.2,
       climaxFromLast: 0.28
     },
     constructs: ['hope_lantern', 'hope_shield', 'anchor', 'lifeline', 'fountain'],
-    hookline: 'Hope is the strongest light there is. Raise both hands to shelter the helpless.'
+    hookline: 'You are the hope that burns when all seems lost. Raise both hands.'
   },
   red: {
     ...CORPS_PALETTES.red,
     oath: {
       audio: 'audio/oath_red_rage.mp3',
+      // Green Lantern vol. 4 #25 (Jan 2008) - Atrocitus
       lines: [
-        'I burn. I burn.',
-        'For those who walk in danger\u2019s way,',
-        'I offer my blood and my life.',
-        'Burn with me. Burn with me!'
+        'With blood and rage of crimson red,',
+        'Ripped from a corpse so freshly dead,',
+        'Together with our hellish hate,',
+        'We\u2019ll burn you all \u2014 that is your fate!'
       ],
-      lineWeights: [1.6, 3.0, 2.6, 2.8],
+      lineWeights: [2.9, 3.0, 2.6, 3.0],
       leadIn: 0.15,
       climaxFromLast: 0.26
     },
     constructs: ['flame_fist', 'fire_cannon', 'barb_lasso', 'blazing_shield', 'meteor'],
-    hookline: 'You are the anger that burns for the helpless. Raise both hands and BURN.'
+    hookline: 'You are the rage that burns for the fallen. Raise both hands and BURN.'
   },
   yellow: {
     ...CORPS_PALETTES.yellow,
     oath: {
       audio: 'audio/oath_yellow_fear.mp3',
+      // Green Lantern vol. 4 #10 (May 2006) - Sinestro
       lines: [
-        'Fear is the master. Fear is my friend.',
-        'I will find you in the dark,',
-        'and lock you in the quietest cell.',
-        'You will know my power. You will obey.'
+        'In blackest day, in brightest night,',
+        'Beware your fears made into light.',
+        "Let those who try to stop what's right,",
+        "Burn like my power \u2014 Sinestro's might!"
       ],
-      lineWeights: [3.4, 2.8, 3.2, 3.0],
-      leadIn: 0.22,
+      lineWeights: [2.9, 3.0, 3.0, 3.1],
+      leadIn: 0.2,
       climaxFromLast: 0.25
     },
     constructs: ['hand_of_fear', 'fear_grenade', 'slithering_abyss', 'shock_beat', 'shrieking_shriek'],
-    hookline: 'You are the terror that locks the wicked in their own skulls. Raise both hands.'
+    hookline: 'You are the fear that disciplines the universe. Raise both hands.'
   },
   white: {
     ...CORPS_PALETTES.white,
     oath: {
       audio: 'audio/oath_white_life.mp3',
+      // Blackest Night #7 (Apr 2010)
       lines: [
-        'Wherever life blooms,',
-        'I will stand beside it.',
-        'Life is the only force that matters.',
-        'Where life ends, I will return it to the light.'
+        'In brightest day, in darkest night,',
+        'Let my ring shine the brightest light.',
+        'When evil comes, I will join the fight,',
+        'The power of the White Lanterns is the strongest might!'
       ],
-      lineWeights: [2.2, 2.2, 3.0, 3.6],
+      lineWeights: [2.7, 3.0, 3.0, 3.6],
       leadIn: 0.2,
       climaxFromLast: 0.32
     },
@@ -787,13 +791,14 @@ const CORPS = {
     ...CORPS_PALETTES.black,
     oath: {
       audio: 'audio/oath_black_death.mp3',
+      // Green Lantern: Secret Origin (2008) - Black Hand
       lines: [
-        'Death has a thousand faces.',
-        'Beware mine.',
-        'The dead do not speak, and neither do I.',
-        'When my black light finds you, you will not rise.'
+        'The Blackest Night falls from the skies,',
+        'The darkness grows as all light dies.',
+        'We crave your hearts and your demise,',
+        'By my black hand, the dead shall rise!'
       ],
-      lineWeights: [2.8, 1.8, 3.6, 4.0],
+      lineWeights: [3.0, 3.0, 2.8, 3.2],
       leadIn: 0.28,
       climaxFromLast: 0.34
     },
@@ -804,13 +809,13 @@ const CORPS = {
     ...CORPS_PALETTES.orange,
     oath: {
       audio: 'audio/oath_orange_avarice.mp3',
+      // Green Lantern vol. 4 #39 (Apr 2009) - Larfleeze
       lines: [
-        'Mine. Mine.',
-        'All that glitters, I will take.',
-        'All that glows, I will own.',
-        'Your treasure is my treasure. Mine!'
+        "What's mine is mine and mine and mine.",
+        'And mine and mine and mine!',
+        'Not yours!'
       ],
-      lineWeights: [1.8, 2.8, 2.6, 3.2],
+      lineWeights: [3.4, 3.0, 2.4],
       leadIn: 0.18,
       climaxFromLast: 0.28
     },

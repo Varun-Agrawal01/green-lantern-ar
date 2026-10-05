@@ -19,61 +19,77 @@ import edge_tts
 OUT_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "audio")
 
 # (filename, voice, rate, pitch, text)
+# The text of every oath below is the CANONIC comic line, not a paraphrase:
+#   Green  - Green Lantern vol. 4 #25 (1986)   (checked-in track, not regenerated)
+#   Blue   - Green Lantern vol. 4 #36 (Dec 2008), Ganthet & Sayd
+#   Red    - Green Lantern vol. 4 #25 (Jan 2008), Atrocitus
+#   Yellow - Green Lantern vol. 4 #10 (May 2006), Sinestro
+#   White  - Blackest Night #7 (Apr 2010)
+#   Black  - Green Lantern: Secret Origin (2008), Black Hand
+#   Orange - Green Lantern vol. 4 #39 (Apr 2009), Larfleeze
+#
 # Pitch/rate trim each voice into the register the corps is read in:
-#   Hope is calm and airy, Rage is shouting, Fear is a slow whisper,
+#   Hope is calm and airy, Rage is shouting, Fear is a slow menace,
 #   Life is warm, Death is hollow, Avarice is greedy and fast.
 CORPS = [
     (
         "oath_blue_hope.mp3",
         "en-US-JennyNeural",
-        "-8%",
-        "+10Hz",
-        "In broken hope, in deepest night, I shall shelter those who lack the light. "
-        "Let those who wield hope's gracious might, beware my power, Blue Lantern's light!",
+        "-6%",
+        "+8Hz",
+        "In fearful day, in raging night, "
+        "With strong hearts full, our souls ignite. "
+        "When all seems lost in the War of Light, "
+        "Look to the stars, for hope burns bright!",
     ),
     (
         "oath_red_rage.mp3",
         "en-US-AriaNeural",
-        "+12%",
-        "+8Hz",
-        "I burn. I burn. For those who walk in danger's way, I offer my blood and my life. "
-        "Let anger guide me, and let my rage never cease. Burn with me. Burn with me!",
+        "+14%",
+        "+10Hz",
+        "With blood and rage of crimson red, "
+        "Ripped from a corpse so freshly dead, "
+        "Together with our hellish hate, "
+        "We'll burn you all, that is your fate!",
     ),
     (
         "oath_yellow_fear.mp3",
         "en-US-AndrewNeural",
-        "-18%",
+        "-16%",
         "-14Hz",
-        "Fear is the master. Fear is my friend. "
-        "I will find you in the dark, and lock you in the quietest cell. "
-        "You will know my power. You will obey.",
+        "In blackest day, in brightest night, "
+        "Beware your fears made into light. "
+        "Let those who try to stop what's right, "
+        "Burn like my power, Sinestro's might!",
     ),
     (
         "oath_white_life.mp3",
         "en-US-AriaNeural",
-        "-6%",
+        "-4%",
         "+2Hz",
-        "Wherever life blooms, I will stand beside it. "
-        "Life is the only force that matters. Life is the plan. "
-        "Where life ends, I will return it to the light.",
+        "In brightest day, in darkest night, "
+        "Let my ring shine the brightest light. "
+        "When evil comes, I will join the fight, "
+        "The power of the White Lanterns is the strongest might!",
     ),
     (
         "oath_black_death.mp3",
         "en-US-GuyNeural",
-        "-22%",
+        "-20%",
         "-18Hz",
-        "Death has a thousand faces. Beware mine. "
-        "The dead do not speak, and neither do I. "
-        "When my black light finds you, you will not rise.",
+        "The Blackest Night falls from the skies, "
+        "The darkness grows as all light dies. "
+        "We crave your hearts and your demise, "
+        "By my black hand, the dead shall rise!",
     ),
     (
         "oath_orange_avarice.mp3",
         "en-US-EricNeural",
-        "+6%",
+        "+8%",
         "+6Hz",
-        "Mine. Mine. All that glitters, I will take. All that glows, I will own. "
-        "Your treasure is my treasure. Your light feeds my light. "
-        "Mine!",
+        "What's mine is mine and mine and mine. "
+        "And mine and mine and mine! "
+        "Not yours!",
     ),
 ]
 
