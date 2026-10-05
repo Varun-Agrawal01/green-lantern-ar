@@ -1,0 +1,28 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+venv/
+env/
+.env
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Scratch / dev scripts
+generate_lines.ps1
+generate_speech.ps1
+list_voices.ps1
+test_voice.wav
+
+# Pip packages
+pip_packages/
+
+# npm cache
+node_modules/
+.npm/

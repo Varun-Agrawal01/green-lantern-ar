@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Green Lantern AR - Willpower Power Ring & Oath</title>
+  
+  <!-- Sci-fi Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+
+  <!-- Three.js 3D Engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- MediaPipe Hands & Camera Utils -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="app-container">
+    <!-- Mirrored Webcam Video -->
+    <video id="webcam-video" autoplay playsinline muted></video>
+
+    <!-- 2D HUD Canvas for Hand Skeleton and Lock-On Reticle -->
+    <canvas id="hud-canvas"></canvas>
+
+    <!-- 3D Three.js Overlay -->
+    <canvas id="gl-canvas"></canvas>
+
+    <!-- CRT Scanline / Holographic Vignette -->
+    <div class="scanlines"></div>
+
+    <!-- Willpower Blast Screen Flash -->
+    <div id="blast-flash"></div>
+
+    <!-- HUD Overlay Layer -->
+    <div class="hud-layer">
+      <!-- Top Bar -->
+      <header class="hud-header">
+        <div class="corps-badge">
+          <!-- Green Lantern Insignia SVG -->
+          <svg class="corps-insignia-icon" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="44" stroke="#00ff88" stroke-width="6"/>
+            <circle cx="50" cy="50" r="28" fill="#00ff88"/>
+            <rect x="22" y="10" width="56" height="10" rx="3" fill="#00ff88"/>
+            <rect x="22" y="80" width="56" height="10" rx="3" fill="#00ff88"/>
+          </svg>
+          <div class="corps-title">
+            <h1>GREEN LANTERN CORPS</h1>
+            <p>SECTOR 2814 &bull; WILLPOWER PROTOCOL</p>
+          </div>
+        </div>
+
+        <div class="hud-status-panel">
+          <div class="tracking-pill">
+            <span id="tracking-dot" class="tracking-dot"></span>
+            <span id="tracking-status-text">INITIALIZING...</span>
+          </div>
+          <div class="battery-gauge">
+            <div class="gauge-label">WILLPOWER CHARGE: 100%</div>
+            <div class="gauge-bar-track">
+              <div class="gauge-bar-fill"></div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Center Oath Subtitles -->
+      <main class="oath-container">
+        <div class="oath-lines">
+          <div id="oath-line-1" class="oath-line">In brightest day, in blackest night,</div>
+          <div id="oath-line-2" class="oath-line">No evil shall escape my sight.</div>
+          <div id="oath-line-3" class="oath-line">Let those who worship evil's might,</div>
+          <div id="oath-line-4" class="oath-line">Beware my power, Green Lantern's light!</div>
+        </div>
+      </main>
+
+      <!-- Bottom Controls -->
+      <footer class="hud-footer">
+        <!-- Construct Selector Palette -->
+        <div class="construct-dock">
+          <div class="dock-label">WILLPOWER CONSTRUCT PROJECTION:</div>
+          <div class="construct-buttons">
+            <button class="construct-btn active" data-construct="fist" title="Press 1: Giant Emerald Fist">
+              <span>🥊</span><span>GIANT FIST</span>
+            </button>
+            <button class="construct-btn" data-construct="shield" title="Press 2: Willpower Aegis Shield">
+              <span>🛡️</span><span>AEGIS SHIELD</span>
+            </button>
+            <button class="construct-btn" data-construct="battery" title="Press 3: Power Battery of Oa">
+              <span>🏮</span><span>POWER BATTERY</span>
+            </button>
+            <button class="construct-btn" data-construct="sword" title="Press 4: Emerald Broadsword">
+              <span>⚔️</span><span>BROADSWORD</span>
+            </button>
+            <button class="construct-btn" data-construct="gatling" title="Press 5: Rotary Gatling Cannon">
+              <span>💥</span><span>GATLING CANNON</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="control-dock">
+          <button id="btn-slam-construct" class="dock-btn highlight" title="Trigger Construct Punch / Slam / Fire">
+            <span>💥</span>
+            <span class="btn-text">SLAM CONSTRUCT (SPACE)</span>
+          </button>
+
+          <button id="btn-recite-oath" class="dock-btn" title="Trigger Green Lantern Oath">
+            <span>✨</span>
+            <span class="btn-text">RECITE OATH</span>
+          </button>
+
+          <button id="btn-demo" class="dock-btn" title="Toggle Mouse Simulated Hand Mode">
+            <span>🖐️</span>
+            <span class="btn-text">DEMO MODE: OFF</span>
+          </button>
+
+          <select id="finger-select" class="dock-select" title="Choose Ring Finger">
+            <option value="middle" selected>Middle Finger (Hal Jordan)</option>
+            <option value="index">Index Finger</option>
+            <option value="ring">Ring Finger</option>
+          </select>
+
+          <button id="btn-mirror" class="dock-btn" title="Toggle Mirroring">
+            <span>🪞</span>
+            <span class="btn-text">MIRROR: ON</span>
+          </button>
+
+          <button id="btn-mute" class="dock-btn" title="Toggle Sound">
+            <span>🔊</span>
+            <span class="btn-text">MUTE AUDIO</span>
+          </button>
+        </div>
+      </footer>
+    </div>
+
+    <!-- Initial Splash / User Action Modal -->
+    <div id="splash-overlay">
+      <div class="splash-content">
+        <!-- Glowing Large Insignia -->
+        <svg class="lantern-emblem-large" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="44" stroke="#00ff88" stroke-width="6"/>
+          <circle cx="50" cy="50" r="27" fill="#00ff88"/>
+          <rect x="22" y="10" width="56" height="10" rx="3" fill="#00ff88"/>
+          <rect x="22" y="80" width="56" height="10" rx="3" fill="#00ff88"/>
+        </svg>
+
+        <h1 class="splash-title">SECTOR 2814 ASSIGNMENT</h1>
+        <p class="splash-subtitle">
+          You have been chosen by the Power Ring. Raise both hands to channel the green light of willpower!
+        </p>
+
+        <button id="awaken-btn" class="awaken-btn">
+          <span>⚡ AWAKEN POWER RING ⚡</span>
+        </button>
+
+        <div class="instructions-card">
+          <p><strong>Two-Handed Willpower Mechanics:</strong></p>
+          <p>🟢 <strong>Hand 1 (Ring Hand)</strong>: Manifests the 3D Green Lantern Power Ring and channels willpower.</p>
+          <p>🟢 <strong>Hand 2 (Construct Hand)</strong>: Projects 3D willpower constructs (Giant Fist, Aegis Shield, Power Battery, Broadsword, Gatling Cannon)!</p>
+          <p>⚡ <strong>Clench or Punch with Hand 2</strong>: Executes the construct attack (Giant Fist punches, Gatling fires, Shield bashes)!</p>
+          <p>🎹 <strong>Keys 1-5 / Click</strong>: Cycle between constructs. Press <strong>Space</strong> to slam.</p>
+          <p><em>(No webcam? Click "Demo Mode" to test dual-hand simulation with your cursor!)</em></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Application Modules -->
+  <script src="js/audio.js"></script>
+  <script src="js/ring.js"></script>
+  <script src="js/constructs.js"></script>
+  <script src="js/vfx.js"></script>
+  <script src="js/tracker.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
