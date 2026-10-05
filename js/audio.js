@@ -1,6 +1,11 @@
 /**
- * GREEN LANTERN AR - NATURAL VOICE AUDIO & CONSTRUCT SFX ENGINE
- * Plays natural human voice oath and authentic animated show sound effects.
+ * EMERALD CORPS AR: AUDIO ENGINE
+ * Neural-voice oaths for all seven corps + procedural construct SFX.
+ *
+ * The oath engine deliberately does NOT hardcode a millisecond subtitle
+ * schedule. It reads the real duration of the active corps' neural track and
+ * distributes its subtitle lines across that window, so regenerating or
+ * re-voicing an oath with build_corps_oaths.py can never desync the text.
  */
 
 class LanternAudioEngine {
@@ -11,11 +16,12 @@ class LanternAudioEngine {
     this.isOathPlaying = false;
     this.oathCallback = null;
 
-    // Natural Human Neural Voice Audio
-    this.naturalVoiceAudio = new Audio('audio/oath_natural_raw.mp3');
-    this.naturalVoiceAudio.preload = 'auto';
+    this.corps = window.CORPS.green;
 
-    // Procedural Hum nodes
+    // One reusable voice element; its source is swapped per corps.
+    this.voice = new Audio();
+    this.voice.preload = 'auto';
+
     this.humGain = null;
     this.humOsc1 = null;
     this.humOsc2 = null;
@@ -24,11 +30,18 @@ class LanternAudioEngine {
     this.oathTimers = [];
   }
 
+  setCorps(corps) {
+    this.corps = corps;
+    // Swap in the new oath narration.
+    this.voice.pause();
+    this.voice.src = corps.oath.audio;
+    this.voice.load();
+    if (this.voice.muted !== this.isMuted) this.voice.muted = this.isMuted;
+  }
+
   async init() {
     if (this.ctx) {
-      if (this.ctx.state === 'suspended') {
-        await this.ctx.resume();
-      }
+      if (this.ctx.state === 'suspended') await this.ctx.resume();
       return;
     }
 
@@ -39,21 +52,163 @@ class LanternAudioEngine {
     this.masterGain.gain.setValueAtTime(0.85, this.ctx.currentTime);
     this.masterGain.connect(this.ctx.destination);
 
-    this.naturalVoiceAudio.load();
+    if (!this.voice.src) this.voice.src = this.corps.oath.audio;
+    this.voice.load();
   }
 
   toggleMute() {
     this.isMuted = !this.isMuted;
-    this.naturalVoiceAudio.muted = this.isMuted;
+    this.voice.muted = this.isMuted;
     if (this.masterGain && this.ctx) {
       this.masterGain.gain.setValueAtTime(this.isMuted ? 0 : 0.85, this.ctx.currentTime);
     }
     return this.isMuted;
   }
 
-  /**
-   * Continuous emerald willpower plasma hum
-   */
+  /* ---------------- generic synth helpers ---------------- */
+
+  _tone(freq, opts = {}) {
+    if (!this.ctx || this.isMuted) return;
+    const now = this.ctx.currentTime + (opts.delay || 0);
+    const dur = opts.dur || 0.5;
+    const peak = opts.peak === undefined ? 0.2 : opts.peak;
+
+    const osc = this.ctx.createOscillator();
+    osc.type = opts.type || 'sine';
+    osc.frequency.setValueAtTime(freq, now);
+    if (opts.sweepTo) {
+      osc.frequency.exponentialRampToValueAtTime(
+        Math.max(opts.sweepTo, 1), now + dur
+      );
+    }
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(Math.max(peak, 0.0002), now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + dur);
+
+    let chain = osc;
+    if (opts.filter) {
+      const f = this.ctx.createBiquadFilter();
+      f.type = opts.filter;
+      f.frequency.setValueAtTime(opts.filterFrom || 1200, now);
+      if (opts.filterTo) f.frequency.exponentialRampToValueAtTime(opts.filterTo, now + dur);
+      f.Q.value = opts.q || 1;
+      chain.connect(f);
+      chain = f;
+    }
+    chain.connect(gain);
+    gain.connect(this.masterGain);
+    osc.start(now);
+    osc.stop(now + dur + 0.05);
+  }
+
+  _noise(dur = 0.3, peak = 0.25, filterType = 'bandpass', freq = 1200, sweepTo) {
+    if (!this.ctx || this.isMuted) return;
+    const now = this.ctx.currentTime;
+    const frames = Math.floor(this.ctx.sampleRate * dur);
+    const buffer = this.ctx.createBuffer(1, frames, this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < frames; i++) {
+      data[i] = (Math.random() * 2 - 1) * (1 - i / frames);
+    }
+    const src = this.ctx.createBufferSource();
+    src.buffer = buffer;
+
+    const f = this.ctx.createBiquadFilter();
+    f.type = filterType;
+    f.frequency.setValueAtTime(freq, now);
+    if (sweepTo) f.frequency.exponentialRampToValueAtTime(sweepTo, now + dur);
+    f.Q.value = 1.2;
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(peak, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+
+    src.connect(f); f.connect(gain); gain.connect(this.masterGain);
+    src.start(now);
+  }
+
+  /* ---------------- construct SFX library ---------------- */
+
+  playChime() {
+    [554.37, 659.25, 830.61, 1108.73].forEach((f, i) => {
+      this._tone(f, { delay: i * 0.04, dur: 1.2, peak: 0.18 });
+    });
+  }
+
+  playImpact() {
+    // sub-bass drop 140Hz -> 32Hz with a crack on top
+    this._tone(140, { type: 'sine', dur: 0.42, peak: 0.65, sweepTo: 32 });
+    this._tone(380, { type: 'triangle', dur: 0.25, peak: 0.4, sweepTo: 80 });
+  }
+
+  playClang() {
+    [880, 1320, 1760].forEach(f => this._tone(f, { dur: 0.65, peak: 0.2 }));
+  }
+
+  playShot() {
+    this._tone(600, { type: 'sawtooth', dur: 0.14, peak: 0.35, sweepTo: 90 });
+    this._noise(0.12, 0.18, 'bandpass', 2400, 600);
+  }
+
+  playSlash() {
+    this._tone(450, {
+      type: 'sawtooth', dur: 0.35, peak: 0.4, sweepTo: 120,
+      filter: 'bandpass', filterFrom: 1200, filterTo: 300
+    });
+  }
+
+  playWhoosh() {
+    this._noise(0.55, 0.22, 'lowpass', 2600, 320);
+    this._tone(180, { type: 'sine', dur: 0.5, peak: 0.2, sweepTo: 420 });
+  }
+
+  playThrow() {
+    this._tone(300, {
+      type: 'square', dur: 0.4, peak: 0.16, sweepTo: 1500,
+      filter: 'bandpass', filterFrom: 600, filterTo: 2600, q: 4
+    });
+  }
+
+  playRoar() {
+    this._noise(0.9, 0.3, 'lowpass', 900, 180);
+    this._tone(110, { type: 'sawtooth', dur: 0.85, peak: 0.3, sweepTo: 62 });
+  }
+
+  playTerror() {
+    // Dissonant minor-second cluster with a falling shriek: dread, not volume.
+    this._tone(1400, { type: 'sine', dur: 0.7, peak: 0.14, sweepTo: 380 });
+    this._tone(1480, { type: 'sine', dur: 0.7, peak: 0.12, sweepTo: 400 });
+    this._tone(70, { type: 'sine', dur: 1.0, peak: 0.35 });
+    this._noise(0.7, 0.1, 'bandpass', 3000, 500);
+  }
+
+  playDeath() {
+    // Hollow, drained, and cold: the low end drops out entirely.
+    this._tone(210, { type: 'sine', dur: 1.1, peak: 0.16, sweepTo: 44 });
+    this._tone(419, { type: 'sine', dur: 0.9, peak: 0.08, sweepTo: 96 });
+    this._noise(0.8, 0.06, 'lowpass', 420, 90);
+  }
+
+  /** Route a construct's declared sfx key to its synthesizer. */
+  playSfx(key) {
+    switch (key) {
+      case 'impact': this.playImpact(); break;
+      case 'clang': this.playClang(); break;
+      case 'shot': this.playShot(); break;
+      case 'slash': this.playSlash(); break;
+      case 'whoosh': this.playWhoosh(); break;
+      case 'throw': this.playThrow(); break;
+      case 'roar': this.playRoar(); break;
+      case 'terror': this.playTerror(); break;
+      case 'death': this.playDeath(); break;
+      default: this.playImpact(); break;
+    }
+  }
+
+  /* ---------------- continuous plasma hum ---------------- */
+
   startPlasmaHum() {
     if (!this.ctx || this.isHumming) return;
     this.isHumming = true;
@@ -88,145 +243,21 @@ class LanternAudioEngine {
   stopPlasmaHum() {
     if (!this.isHumming || !this.ctx) return;
     this.isHumming = false;
-    const now = this.ctx.currentTime;
     if (this.humGain) {
-      this.humGain.gain.linearRampToValueAtTime(0.001, now + 0.4);
+      this.humGain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.4);
     }
     setTimeout(() => {
       try {
         if (this.humOsc1) this.humOsc1.stop();
         if (this.humOsc2) this.humOsc2.stop();
-      } catch (e) {}
+      } catch (e) { /* already stopped */ }
     }, 450);
   }
 
-  /**
-   * Resonant cosmic chime on ring lock-on
-   */
-  playChime() {
-    if (!this.ctx || this.isMuted) return;
-    const now = this.ctx.currentTime;
-    const freqs = [554.37, 659.25, 830.61, 1108.73];
-
-    freqs.forEach((f, i) => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(f, now + i * 0.04);
-      gain.gain.setValueAtTime(0.18, now + i * 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.04 + 1.2);
-      osc.connect(gain);
-      gain.connect(this.masterGain);
-      osc.start(now + i * 0.04);
-      osc.stop(now + i * 0.04 + 1.3);
-    });
-  }
+  /* ---------------- oath playback ---------------- */
 
   /**
-   * Giant Fist Punch Impact (Heavy comic book slam with sub-bass drop)
-   */
-  playPunchImpact() {
-    if (!this.ctx || this.isMuted) return;
-    const now = this.ctx.currentTime;
-
-    // Sub bass drop 140Hz -> 35Hz
-    const sub = this.ctx.createOscillator();
-    const subGain = this.ctx.createGain();
-    sub.type = 'sine';
-    sub.frequency.setValueAtTime(140, now);
-    sub.frequency.exponentialRampToValueAtTime(32, now + 0.35);
-    subGain.gain.setValueAtTime(0.65, now);
-    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
-    sub.connect(subGain);
-    subGain.connect(this.masterGain);
-    sub.start(now);
-    sub.stop(now + 0.42);
-
-    // Punch crack noise burst
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(380, now);
-    osc.frequency.exponentialRampToValueAtTime(80, now + 0.2);
-    gain.gain.setValueAtTime(0.4, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-    osc.start(now);
-    osc.stop(now + 0.25);
-  }
-
-  /**
-   * Shield Deflection Clang
-   */
-  playShieldClang() {
-    if (!this.ctx || this.isMuted) return;
-    const now = this.ctx.currentTime;
-    const freqs = [880, 1320, 1760];
-    freqs.forEach(f => {
-      const osc = this.ctx.createOscillator();
-      const gain = this.ctx.createGain();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(f, now);
-      gain.gain.setValueAtTime(0.2, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-      osc.connect(gain);
-      gain.connect(this.masterGain);
-      osc.start(now);
-      osc.stop(now + 0.65);
-    });
-  }
-
-  /**
-   * Gatling Cannon Rapid Pulse
-   */
-  playGatlingShot() {
-    if (!this.ctx || this.isMuted) return;
-    const now = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(600, now);
-    osc.frequency.exponentialRampToValueAtTime(90, now + 0.1);
-    gain.gain.setValueAtTime(0.35, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-    osc.connect(gain);
-    gain.connect(this.masterGain);
-    osc.start(now);
-    osc.stop(now + 0.14);
-  }
-
-  /**
-   * Broadsword Energy Slash
-   */
-  playSwordSlash() {
-    if (!this.ctx || this.isMuted) return;
-    const now = this.ctx.currentTime;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    const filter = this.ctx.createBiquadFilter();
-
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(450, now);
-    osc.frequency.exponentialRampToValueAtTime(120, now + 0.3);
-
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(1200, now);
-    filter.frequency.exponentialRampToValueAtTime(300, now + 0.3);
-
-    gain.gain.setValueAtTime(0.4, now);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
-
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.masterGain);
-
-    osc.start(now);
-    osc.stop(now + 0.35);
-  }
-
-  /**
-   * Plays the Green Lantern Oath with Natural Human Voice and cinematic progression
+   * @param {function} onLineUpdate  (lineIdx, text, isDone, isClimax)
    */
   playOath(onLineUpdate) {
     if (this.isOathPlaying) return;
@@ -239,48 +270,76 @@ class LanternAudioEngine {
     this.oathTimers.forEach(t => clearTimeout(t));
     this.oathTimers = [];
 
-    // Play natural human neural voice
-    this.naturalVoiceAudio.currentTime = 0;
-    this.naturalVoiceAudio.play().catch(e => {
-      console.warn("Audio autoplay blocked:", e);
-    });
+    const voice = this.voice;
+    voice.currentTime = 0;
+    voice.play().catch(e => console.warn('Audio autoplay blocked:', e));
 
-    // Exact cadence of the natural voice recording:
-    // Line 0: "In brightest day... in blackest night,"
-    // Line 1: "No evil shall escape my sight."
-    // Line 2: "Let those who worship evil's might,"
-    // Line 3: "Beware my power... GREEN LANTERN'S LIGHT!" (Climax!)
-    const schedule = [
-      { time: 200, line: 0, text: "In brightest day... in blackest night,", climax: false },
-      { time: 3600, line: 1, text: "No evil shall escape my sight.", climax: false },
-      { time: 6400, line: 2, text: "Let those who worship evil's might,", climax: false },
-      { time: 9200, line: 3, text: "Beware my power... GREEN LANTERN'S LIGHT!", climax: true },
-      { time: 13500, line: -1, text: "", done: true }
-    ];
+    const buildSchedule = (durationSec) => {
+      const oath = this.corps.oath;
+      const lines = oath.lines;
+      const weights = oath.lineWeights;
+      const totalWeight = weights.reduce((a, b) => a + b, 0);
+      const usable = Math.max(0.5, durationSec - oath.leadIn);
 
-    schedule.forEach(item => {
-      const timer = setTimeout(() => {
-        if (!this.isOathPlaying) return;
+      let elapsed = oath.leadIn * 1000;
+      const schedule = lines.map((text, i) => {
+        const startMs = elapsed;
+        elapsed += (weights[i] / totalWeight) * usable * 1000;
+        return {
+          time: startMs,
+          line: i,
+          text: text,
+          climax: i >= lines.length - 1
+        };
+      });
+      schedule.push({ time: durationSec * 1000 + 400, line: -1, text: '', done: true });
+      return schedule;
+    };
 
-        if (item.climax) {
-          this.playPunchImpact(); // Sub-bass impact boom on climax!
+    // resolve duration from the real track once metadata is in, then lay the
+    // subtitles across it. Fallback window until then.
+    const fallbackDur = this.corps.oath.lineWeights.reduce((a, b) => a + b, 0);
+    let fired = false;
+
+    const run = (durationSec) => {
+      if (fired || !this.isOathPlaying) return;
+      fired = true;
+      buildSchedule(durationSec).forEach(item => {
+        const timer = setTimeout(() => {
+          if (!this.isOathPlaying) return;
+          if (item.climax) this.playImpact();
+          if (item.done) {
+            this.isOathPlaying = false;
+            if (this.oathCallback) this.oathCallback(-1, '', true, false);
+          } else if (this.oathCallback) {
+            this.oathCallback(item.line, item.text, false, item.climax);
+          }
+        }, item.time);
+        this.oathTimers.push(timer);
+      });
+    };
+
+    if (voice.readyState >= 1 && isFinite(voice.duration) && voice.duration > 0) {
+      run(voice.duration);
+    } else {
+      // Lay out against the fallback immediately so the subtitles start on
+      // time, then correct if the true duration differs materially.
+      run(fallbackDur);
+      voice.addEventListener('loadedmetadata', () => {
+        if (this.isOathPlaying && isFinite(voice.duration) && voice.duration > 0) {
+          this.oathTimers.forEach(t => clearTimeout(t));
+          this.oathTimers = [];
+          fired = false;
+          run(voice.duration);
         }
-
-        if (item.done) {
-          this.isOathPlaying = false;
-          if (this.oathCallback) this.oathCallback(-1, "", true, false);
-        } else {
-          if (this.oathCallback) this.oathCallback(item.line, item.text, false, item.climax);
-        }
-      }, item.time);
-      this.oathTimers.push(timer);
-    });
+      }, { once: true });
+    }
   }
 
   stopOath() {
     this.isOathPlaying = false;
-    this.naturalVoiceAudio.pause();
-    this.naturalVoiceAudio.currentTime = 0;
+    this.voice.pause();
+    this.voice.currentTime = 0;
     this.oathTimers.forEach(t => clearTimeout(t));
     this.oathTimers = [];
   }

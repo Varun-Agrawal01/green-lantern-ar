@@ -1,21 +1,22 @@
 /**
- * GREEN LANTERN AR - CINEMATIC 3D POWER RING
- * Highly detailed superhero signet ring with emerald metal, glowing insignia, and energy halo.
+ * EMERALD CORPS AR: CINEMATIC 3D POWER RING
+ * Highly detailed superhero signet ring with metallic corps-coloured alloy,
+ * glowing insignia and an energy halo. The emissive insignia is driven from
+ * the active corps palette, so the same ring reads as each emotional spectrum.
  */
 
 class LanternRing {
-  constructor(scene) {
+  constructor(scene, palette) {
     this.scene = scene;
+    this.palette = palette || window.CORPS_PALETTES.green;
+
     this.group = new THREE.Group();
-    this.ringMesh = null;
     this.coreLight = null;
     this.emblemMaterials = [];
     this.lightningBolts = [];
-    
-    // Scale and animation
+
     this.targetScale = 0;
     this.currentScale = 0;
-    this.visible = false;
 
     this._buildRing();
     this._buildLightningEffects();
@@ -23,143 +24,132 @@ class LanternRing {
   }
 
   _buildRing() {
-    // 1. High-end Metallic Emerald Material
-    const emeraldMetalMaterial = new THREE.MeshStandardMaterial({
-      color: 0x008f4c,
-      roughness: 0.18,
-      metalness: 0.88,
-      emissive: 0x002e15,
-      emissiveIntensity: 0.5
+    const p = this.palette;
+    const isDeath = p.key === 'black';
+    // Black Lantern rings are necrotic bone and tarnished iron, not emerald;
+    // White Lantern rings are pale ivory rather than metallic alloy.
+    const alloyColor = isDeath ? 0x2a2436 : (p.key === 'white' ? 0xd8d2c4 : p.body);
+    const darkSetting = isDeath ? 0x0a0810 : (p.key === 'white' ? 0x8a8478 : p.deep);
+    const glowColor = isDeath ? p.bright : p.body;
+    const metalness = isDeath ? 0.55 : (p.key === 'white' ? 0.3 : 0.88);
+    const emissiveBase = isDeath ? 0.6 : (p.key === 'white' ? 1.2 : 0.5);
+
+    const alloyMaterial = new THREE.MeshStandardMaterial({
+      color: alloyColor,
+      roughness: isDeath ? 0.7 : 0.18,
+      metalness: metalness,
+      emissive: isDeath ? 0x1a0f2e : p.deep,
+      emissiveIntensity: emissiveBase
     });
 
-    // Darker inner setting metal
     const darkSettingMaterial = new THREE.MeshStandardMaterial({
-      color: 0x003b1d,
+      color: darkSetting,
       roughness: 0.35,
       metalness: 0.75
     });
 
-    // Highly emissive emerald willpower glow
     const coreGlowMaterial = new THREE.MeshStandardMaterial({
-      color: 0x5effb8,
-      emissive: 0x00ff88,
-      emissiveIntensity: 3.2,
+      color: p.bright,
+      emissive: glowColor,
+      emissiveIntensity: isDeath ? 2.0 : 3.2,
       roughness: 0.05,
       metalness: 0.1
     });
     this.emblemMaterials.push(coreGlowMaterial);
 
     const brightSymbolMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      emissive: 0x33ff99,
-      emissiveIntensity: 2.8,
+      color: isDeath ? p.bright : 0xffffff,
+      emissive: isDeath ? p.bright : p.body,
+      emissiveIntensity: isDeath ? 2.4 : 2.8,
       roughness: 0.1,
       metalness: 0.5
     });
     this.emblemMaterials.push(brightSymbolMaterial);
 
-    // 2. Main Finger Band (Ergonomic contoured signet torus)
-    // Base dimensions tuned for screen pixels (radius ~18px, thickness ~5.5px)
-    const bandGeo = new THREE.TorusGeometry(18, 5.5, 32, 64);
-    const band = new THREE.Mesh(bandGeo, emeraldMetalMaterial);
+    // 1. Main finger band (ergonomic contoured signet torus)
+    const band = new THREE.Mesh(new THREE.TorusGeometry(18, 5.5, 32, 64), alloyMaterial);
     band.rotation.x = Math.PI / 2;
     this.group.add(band);
 
-    // Band inner comfort-fit bevel
-    const innerRimGeo = new THREE.TorusGeometry(18, 2.5, 16, 64);
-    const innerRim = new THREE.Mesh(innerRimGeo, darkSettingMaterial);
+    const innerRim = new THREE.Mesh(new THREE.TorusGeometry(18, 2.5, 16, 64), darkSettingMaterial);
     innerRim.rotation.x = Math.PI / 2;
     this.group.add(innerRim);
 
-    // 3. Heavy Signet Mount / Bezel Base (Chunky heroic signet silhouette)
-    const mountGeo = new THREE.CylinderGeometry(13.5, 15.5, 7.5, 36);
-    const mount = new THREE.Mesh(mountGeo, emeraldMetalMaterial);
+    // 2. Heavy signet mount / bezel base
+    const mount = new THREE.Mesh(new THREE.CylinderGeometry(13.5, 15.5, 7.5, 36), alloyMaterial);
     mount.position.set(0, 16.5, 0);
     this.group.add(mount);
 
-    // 4. Stepped Bezel Collar
-    const collarGeo = new THREE.CylinderGeometry(14.8, 14.2, 2.2, 36);
-    const collar = new THREE.Mesh(collarGeo, darkSettingMaterial);
+    // 3. Stepped bezel collar
+    const collar = new THREE.Mesh(new THREE.CylinderGeometry(14.8, 14.2, 2.2, 36), darkSettingMaterial);
     collar.position.set(0, 20.2, 0);
     this.group.add(collar);
 
-    // 5. Outer Bezel Frame Rim
-    const bezelRimGeo = new THREE.TorusGeometry(13.2, 1.8, 16, 36);
-    const bezelRim = new THREE.Mesh(bezelRimGeo, emeraldMetalMaterial);
+    // 4. Outer bezel frame rim
+    const bezelRim = new THREE.Mesh(new THREE.TorusGeometry(13.2, 1.8, 16, 36), alloyMaterial);
     bezelRim.position.set(0, 21.0, 0);
     bezelRim.rotation.x = Math.PI / 2;
     this.group.add(bezelRim);
 
-    // 6. Central Power Battery Gem / Faceted Crystal Lens
-    const crystalGeo = new THREE.CylinderGeometry(12.2, 12.2, 1.2, 36);
-    const crystal = new THREE.Mesh(crystalGeo, coreGlowMaterial);
+    // 5. Central faceted crystal lens
+    const crystal = new THREE.Mesh(new THREE.CylinderGeometry(12.2, 12.2, 1.2, 36), coreGlowMaterial);
     crystal.position.set(0, 20.8, 0);
     this.group.add(crystal);
 
-    // 7. Iconic Green Lantern Insignia (Modeled in 3D relief)
-    // A. Outer circular lantern aperture
-    const emblemRingGeo = new THREE.TorusGeometry(6.5, 1.2, 16, 36);
-    const emblemRing = new THREE.Mesh(emblemRingGeo, brightSymbolMaterial);
+    // 6. Corps insignia in 3D relief. Every Emotional Spectrum emblem is a
+    //    circle flanked by two bars; only the colour changes between corps.
+    const emblemRing = new THREE.Mesh(new THREE.TorusGeometry(6.5, 1.2, 16, 36), brightSymbolMaterial);
     emblemRing.position.set(0, 21.6, 0);
     emblemRing.rotation.x = Math.PI / 2;
     this.group.add(emblemRing);
 
-    // B. Inner power core dot
-    const coreDotGeo = new THREE.SphereGeometry(2.2, 16, 16);
-    const coreDot = new THREE.Mesh(coreDotGeo, brightSymbolMaterial);
+    const coreDot = new THREE.Mesh(new THREE.SphereGeometry(2.2, 16, 16), brightSymbolMaterial);
     coreDot.position.set(0, 21.8, 0);
     this.group.add(coreDot);
 
-    // C. Upper power bar
-    const barTopGeo = new THREE.BoxGeometry(16.5, 1.6, 1.8);
-    const barTop = new THREE.Mesh(barTopGeo, brightSymbolMaterial);
+    const barTop = new THREE.Mesh(new THREE.BoxGeometry(16.5, 1.6, 1.8), brightSymbolMaterial);
     barTop.position.set(0, 21.6, -7.0);
     this.group.add(barTop);
 
-    // D. Lower power bar
-    const barBottomGeo = new THREE.BoxGeometry(16.5, 1.6, 1.8);
-    const barBottom = new THREE.Mesh(barBottomGeo, brightSymbolMaterial);
+    const barBottom = new THREE.Mesh(new THREE.BoxGeometry(16.5, 1.6, 1.8), brightSymbolMaterial);
     barBottom.position.set(0, 21.6, 7.0);
     this.group.add(barBottom);
 
-    // 8. Orbiting Willpower Energy Halo Ring
-    const haloGeo = new THREE.TorusGeometry(23, 0.7, 16, 48);
-    const haloMat = new THREE.MeshBasicMaterial({
-      color: 0x52ffaa,
-      transparent: true,
-      opacity: 0.65,
-      blending: THREE.AdditiveBlending
-    });
-    this.halo = new THREE.Mesh(haloGeo, haloMat);
+    // 7. Orbiting energy halo
+    this.halo = new THREE.Mesh(
+      new THREE.TorusGeometry(23, 0.7, 16, 48),
+      new THREE.MeshBasicMaterial({
+        color: p.bright,
+        transparent: true,
+        opacity: 0.65,
+        blending: THREE.AdditiveBlending
+      })
+    );
     this.halo.position.set(0, 20.5, 0);
     this.halo.rotation.x = Math.PI / 2;
     this.group.add(this.halo);
 
-    // 9. Dynamic Point Light (Casts radiant green glow onto user's hand)
-    this.coreLight = new THREE.PointLight(0x00ff88, 5.0, 300);
+    // 8. Point light casting the corps colour onto the user's hand
+    this.coreLight = new THREE.PointLight(glowColor, 5.0, 300);
     this.coreLight.position.set(0, 28, 0);
     this.group.add(this.coreLight);
 
-    // Start with ring hidden
     this.group.scale.set(0.001, 0.001, 0.001);
   }
 
   _buildLightningEffects() {
     this.lightningGroup = new THREE.Group();
-    const count = 5;
-    const lightningMat = new THREE.LineBasicMaterial({
-      color: 0x88ffc8,
-      linewidth: 2,
+    this.lightningMaterial = new THREE.LineBasicMaterial({
+      color: this.palette.bright,
       transparent: true,
       opacity: 0.85,
       blending: THREE.AdditiveBlending
     });
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < 5; i++) {
       const geo = new THREE.BufferGeometry();
-      const points = new Float32Array(8 * 3);
-      geo.setAttribute('position', new THREE.BufferAttribute(points, 3));
-      const line = new THREE.Line(geo, lightningMat);
+      geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(8 * 3), 3));
+      const line = new THREE.Line(geo, this.lightningMaterial);
       this.lightningBolts.push(line);
       this.lightningGroup.add(line);
     }
@@ -171,43 +161,51 @@ class LanternRing {
       const line = this.lightningBolts[b];
       const pos = line.geometry.attributes.position.array;
       const angle = (b / this.lightningBolts.length) * Math.PI * 2 + Math.random() * 0.5;
-      
+
       let currX = Math.cos(angle) * 16;
       let currY = 21;
       let currZ = Math.sin(angle) * 16;
 
-      pos[0] = currX;
-      pos[1] = currY;
-      pos[2] = currZ;
+      pos[0] = currX; pos[1] = currY; pos[2] = currZ;
 
       for (let p = 1; p < 8; p++) {
         currX += (Math.random() - 0.5) * 12 + Math.cos(angle) * 4;
         currY += (Math.random() - 0.5) * 8 - 1.5;
         currZ += (Math.random() - 0.5) * 12 + Math.sin(angle) * 4;
-        pos[p * 3] = currX;
-        pos[p * 3 + 1] = currY;
-        pos[p * 3 + 2] = currZ;
+        pos[p * 3] = currX; pos[p * 3 + 1] = currY; pos[p * 3 + 2] = currZ;
       }
       line.geometry.attributes.position.needsUpdate = true;
     }
   }
 
-  /**
-   * Updates position and orientation matrix from kinematics solver
-   */
+  /** Swap the ring to a different corps: rebuild geometry + recolour. */
+  setPalette(palette) {
+    this.palette = palette;
+
+    while (this.group.children.length) {
+      const child = this.group.children.pop();
+      child.traverse(obj => {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material && !Array.isArray(obj.material)) obj.material.dispose();
+      });
+    }
+    this.emblemMaterials = [];
+    this.lightningBolts = [];
+    this.coreLight = null;
+    this.halo = null;
+
+    this._buildRing();
+    this._buildLightningEffects();
+  }
+
   updateTransform(position, boneVector, normalVector, baseScale) {
     if (!position || !boneVector) {
       this.targetScale = 0;
       return;
     }
-
     this.targetScale = baseScale;
     this.group.position.copy(position);
 
-    // Compute coordinate frame:
-    // Y-axis = normalVector (pointing away from dorsal side of hand)
-    // Z-axis = boneVector (pointing along finger segment towards fingertip)
-    // X-axis = normal x bone
     const yAxis = normalVector.clone().normalize();
     const zAxis = boneVector.clone().normalize();
     const xAxis = new THREE.Vector3().crossVectors(yAxis, zAxis).normalize();
@@ -218,11 +216,7 @@ class LanternRing {
     this.group.setRotationFromMatrix(rotMatrix);
   }
 
-  /**
-   * Frame tick
-   */
   tick(delta, time) {
-    // Smooth lerp scale
     this.currentScale += (this.targetScale - this.currentScale) * 0.28;
     if (this.currentScale < 0.02) {
       this.group.visible = false;
@@ -232,22 +226,15 @@ class LanternRing {
     }
 
     if (this.group.visible) {
-      // Pulse core light and emblem
       const pulse = 1.0 + Math.sin(time * 6.0) * 0.35;
-      if (this.coreLight) {
-        this.coreLight.intensity = 4.8 * pulse;
-      }
-      this.emblemMaterials.forEach(mat => {
-        mat.emissiveIntensity = 3.0 * pulse;
-      });
+      if (this.coreLight) this.coreLight.intensity = 4.8 * pulse;
+      this.emblemMaterials.forEach(mat => { mat.emissiveIntensity = 3.0 * pulse; });
 
-      // Rotate halo ring
       if (this.halo) {
         this.halo.rotation.z = time * 2.5;
-        this.halo.scale.set(1.0 + Math.sin(time * 8.0) * 0.08, 1.0 + Math.sin(time * 8.0) * 0.08, 1.0);
+        const s = 1.0 + Math.sin(time * 8.0) * 0.08;
+        this.halo.scale.set(s, s, s);
       }
-
-      // Update lightning arcs
       this._updateLightning();
     }
   }

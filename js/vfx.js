@@ -1,21 +1,17 @@
 /**
- * GREEN LANTERN AR - WILLPOWER VISUAL EFFECTS (VFX)
- * High-performance willpower sparks, manifestation shockwaves, and construct impact effects.
- * (Generic laser blast removed in favor of authentic animated show constructs).
+ * EMERALD CORPS AR: VISUAL EFFECTS
+ * Willpower sparks, manifestation shockwaves and impact flashes.
+ * All colours come from the active corps palette.
  */
 
 class LanternVFX {
-  constructor(scene) {
+  constructor(scene, palette) {
     this.scene = scene;
+    this.palette = palette || window.CORPS_PALETTES.green;
 
-    // Orbiting Willpower Particles
     this.sparksCount = 120;
-    this.sparksGeometry = null;
-    this.sparksMaterial = null;
-    this.sparksPoints = null;
     this.sparkData = [];
 
-    // Burst Shockwave
     this.burstMesh = null;
     this.burstScale = 0;
     this.burstOpacity = 0;
@@ -25,12 +21,14 @@ class LanternVFX {
   }
 
   _initOrbitingSparks() {
+    const p = this.palette;
+
     this.sparksGeometry = new THREE.BufferGeometry();
     const positions = new Float32Array(this.sparksCount * 3);
     const colors = new Float32Array(this.sparksCount * 3);
 
-    const baseColor = new THREE.Color(0x00ff88);
-    const brightColor = new THREE.Color(0xa8ffd9);
+    const baseColor = new THREE.Color(p.spark);
+    const brightColor = new THREE.Color(p.bright);
 
     for (let i = 0; i < this.sparksCount; i++) {
       positions[i * 3] = 0;
@@ -54,45 +52,64 @@ class LanternVFX {
     this.sparksGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     this.sparksGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
 
-    const canvas = document.createElement('canvas');
-    canvas.width = 64;
-    canvas.height = 64;
-    const ctx = canvas.getContext('2d');
-    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-    grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
-    grad.addColorStop(0.35, 'rgba(0, 255, 136, 0.9)');
-    grad.addColorStop(0.8, 'rgba(0, 255, 136, 0.2)');
-    grad.addColorStop(1, 'rgba(0, 255, 136, 0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 64, 64);
-    const texture = new THREE.CanvasTexture(canvas);
-
-    this.sparksMaterial = new THREE.PointsMaterial({
-      size: 14,
-      map: texture,
-      vertexColors: true,
-      transparent: true,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false
-    });
-
+    this.sparksMaterial = this._makeSparkMaterial(baseColor);
     this.sparksPoints = new THREE.Points(this.sparksGeometry, this.sparksMaterial);
     this.sparksPoints.visible = false;
     this.scene.add(this.sparksPoints);
   }
 
+  _makeSparkMaterial(color) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 64;
+    canvas.height = 64;
+    const ctx = canvas.getContext('2d');
+    const r = Math.round(color.r * 255);
+    const g = Math.round(color.g * 255);
+    const b = Math.round(color.b * 255);
+    const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    grad.addColorStop(0, 'rgba(255, 255, 255, 1)');
+    grad.addColorStop(0.35, `rgba(${r}, ${g}, ${b}, 0.9)`);
+    grad.addColorStop(0.8, `rgba(${r}, ${g}, ${b}, 0.2)`);
+    grad.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 64, 64);
+
+    return new THREE.PointsMaterial({
+      size: 14,
+      map: new THREE.CanvasTexture(canvas),
+      vertexColors: true,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+  }
+
   _initBurstShockwave() {
     const geo = new THREE.RingGeometry(2, 6, 48);
-    const mat = new THREE.MeshBasicMaterial({
-      color: 0x5effb8,
+    this.burstMesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+      color: this.palette.bright,
       transparent: true,
       opacity: 0,
       side: THREE.DoubleSide,
       blending: THREE.AdditiveBlending
-    });
-    this.burstMesh = new THREE.Mesh(geo, mat);
+    }));
     this.burstMesh.visible = false;
     this.scene.add(this.burstMesh);
+  }
+
+  /** Recolour the particle field and shockwave for a new corps. */
+  setPalette(palette) {
+    this.palette = palette;
+
+    this.scene.remove(this.sparksPoints);
+    this.sparksGeometry.dispose();
+    if (this.sparksMaterial) this.sparksMaterial.map.dispose();
+    this.sparksMaterial = null;
+    this.sparkData = [];
+    this.sparksPoints = null;
+    this._initOrbitingSparks();
+
+    this.burstMesh.material.color.set(palette.bright);
   }
 
   triggerBurst(position) {
@@ -113,7 +130,7 @@ class LanternVFX {
   }
 
   update(delta, time, ringPosition, isRingVisible) {
-    if (isRingVisible && ringPosition) {
+    if (isRingVisible && ringPosition && this.sparksPoints) {
       this.sparksPoints.visible = true;
       const positions = this.sparksGeometry.attributes.position.array;
 
@@ -122,16 +139,12 @@ class LanternVFX {
         d.theta += d.speed * delta * 2.2;
         d.phi += d.speed * delta * 1.1;
 
-        const x = ringPosition.x + d.radius * Math.sin(d.phi) * Math.cos(d.theta);
-        const y = ringPosition.y + d.radius * Math.sin(d.phi) * Math.sin(d.theta);
-        const z = ringPosition.z + d.radius * Math.cos(d.phi);
-
-        positions[i * 3] = x;
-        positions[i * 3 + 1] = y;
-        positions[i * 3 + 2] = z;
+        positions[i * 3] = ringPosition.x + d.radius * Math.sin(d.phi) * Math.cos(d.theta);
+        positions[i * 3 + 1] = ringPosition.y + d.radius * Math.sin(d.phi) * Math.sin(d.theta);
+        positions[i * 3 + 2] = ringPosition.z + d.radius * Math.cos(d.phi);
       }
       this.sparksGeometry.attributes.position.needsUpdate = true;
-    } else {
+    } else if (this.sparksPoints) {
       this.sparksPoints.visible = false;
     }
 
@@ -140,9 +153,7 @@ class LanternVFX {
       this.burstOpacity -= delta * 2.2;
       this.burstMesh.scale.set(this.burstScale, this.burstScale, 1);
       this.burstMesh.material.opacity = Math.max(0, this.burstOpacity);
-      if (this.burstOpacity <= 0.01) {
-        this.burstMesh.visible = false;
-      }
+      if (this.burstOpacity <= 0.01) this.burstMesh.visible = false;
     }
   }
 }

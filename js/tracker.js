@@ -1,16 +1,17 @@
 /**
- * GREEN LANTERN AR - DUAL-HAND TRACKER & KINEMATICS ENGINE
+ * EMERALD CORPS AR: DUAL-HAND TRACKER & KINEMATICS ENGINE
  * Supports 2 hands simultaneously:
- * Hand 1: Wears the Green Lantern Power Ring (middle finger)
- * Hand 2: Projects the 3D Willpower Construct (Giant Fist, Shield, Battery, etc.)
+ *   Hand 1: Wears the Power Ring (middle finger by default)
+ *   Hand 2: Projects the 3D Construct
  */
 
 class HandTracker {
-  constructor(videoElement, hudCanvasElement, callbacks) {
+  constructor(videoElement, hudCanvasElement, callbacks, palette) {
     this.video = videoElement;
     this.hudCanvas = hudCanvasElement;
     this.hudCtx = hudCanvasElement ? hudCanvasElement.getContext('2d') : null;
-    
+    this.palette = palette || window.CORPS_PALETTES.green;
+
     // Callbacks
     this.onRingHandTracked = callbacks.onRingHandTracked;
     this.onRingHandLost = callbacks.onRingHandLost;
@@ -67,13 +68,20 @@ class HandTracker {
   }
 
   setFinger(fingerName) {
-    if (this.fingerIndices[fingerName]) {
-      this.selectedFinger = fingerName;
-    }
+    if (this.fingerIndices[fingerName]) this.selectedFinger = fingerName;
   }
 
   setMirrored(mirrored) {
     this.isMirrored = mirrored;
+  }
+
+  /** Recolour the HUD skeleton + reticle for a new corps. */
+  setPalette(palette) {
+    this.palette = palette;
+  }
+
+  _hex(color) {
+    return '#' + color.toString(16).padStart(6, '0');
   }
 
   /**
@@ -83,7 +91,7 @@ class HandTracker {
     if (this.isTracking) return;
 
     if (typeof Hands === 'undefined') {
-      console.warn("MediaPipe Hands library not loaded; launching demo mode.");
+      console.warn('MediaPipe Hands library not loaded; launching demo mode.');
       this.startDemoMode();
       return;
     }
@@ -93,7 +101,6 @@ class HandTracker {
         locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
       });
 
-      // Enable 2 hands for dual-hand ring + projection mechanics!
       this.hands.setOptions({
         maxNumHands: 2,
         modelComplexity: 1,
@@ -125,7 +132,7 @@ class HandTracker {
         this._startVideoLoop();
       }
     } catch (err) {
-      console.error("Camera access failed or denied:", err);
+      console.error('Camera access failed or denied:', err);
       this.startDemoMode();
     }
   }
@@ -140,9 +147,6 @@ class HandTracker {
     requestAnimationFrame(loop);
   }
 
-  /**
-   * Processes MediaPipe landmark results for both hands
-   */
   _processResults(results) {
     if (this.hudCtx) {
       this.hudCtx.clearRect(0, 0, this.hudCanvas.width, this.hudCanvas.height);
@@ -158,16 +162,14 @@ class HandTracker {
       return;
     }
 
-    // Determine Hand Roles:
-    // If 1 hand detected: Hand 0 is Ring Hand
-    // If 2 hands detected: Hand with higher X (or handedness) is Ring Hand, other is Construct Hand!
+    // Hand roles: with 2 hands, the one further right (mirrored view) is the
+    // ring hand; the other projects constructs.
     let ringHandIndex = 0;
     let constHandIndex = -1;
 
     if (handCount >= 2) {
       const h0 = results.multiHandLandmarks[0][0].x;
       const h1 = results.multiHandLandmarks[1][0].x;
-      // In mirrored mode, user's right hand is on right side of screen (x > 0.5)
       if (h0 > h1) {
         ringHandIndex = 0;
         constHandIndex = 1;
@@ -177,14 +179,10 @@ class HandTracker {
       }
     }
 
-    // 1. Process Ring Hand
-    const ringLandmarks = results.multiHandLandmarks[ringHandIndex];
-    this._solveRingHand(ringLandmarks);
+    this._solveRingHand(results.multiHandLandmarks[ringHandIndex]);
 
-    // 2. Process Construct Hand (if present)
     if (constHandIndex >= 0) {
-      const constLandmarks = results.multiHandLandmarks[constHandIndex];
-      this._solveConstructHand(constLandmarks);
+      this._solveConstructHand(results.multiHandLandmarks[constHandIndex]);
     } else {
       this.smoothedConstPos = null;
       if (this.onConstructHandLost) this.onConstructHandLost();
@@ -223,10 +221,11 @@ class HandTracker {
       const py = offY + lm.y * renderH;
       screenPoints.push({ x: px, y: py });
 
-      const tx = px - cw / 2;
-      const ty = -(py - ch / 2);
-      const tz = -lm.z * renderW * 0.75;
-      threePoints.push(new THREE.Vector3(tx, ty, tz));
+      threePoints.push(new THREE.Vector3(
+        px - cw / 2,
+        -(py - ch / 2),
+        -lm.z * renderW * 0.75
+      ));
     }
 
     return { screenPoints, threePoints };
@@ -234,7 +233,7 @@ class HandTracker {
 
   _solveRingHand(landmarks) {
     const { screenPoints, threePoints } = this._toScreenAndThree(landmarks);
-    this._drawHandHUD(screenPoints, '#00ff88', 'RING HAND');
+    this._drawHandHUD(screenPoints, this._hex(this.palette.body), 'RING HAND');
 
     const indices = this.fingerIndices[this.selectedFinger];
     const pMcp = threePoints[indices.mcp];
@@ -265,9 +264,11 @@ class HandTracker {
       this.smoothedRingScale += (rawScale - this.smoothedRingScale) * this.alpha;
     }
 
-    const ringScreenX = (this.smoothedRingPos.x + window.innerWidth / 2);
-    const ringScreenY = (-this.smoothedRingPos.y + window.innerHeight / 2);
-    this._drawTargetReticle(ringScreenX, ringScreenY, this.smoothedRingScale);
+    this._drawTargetReticle(
+      this.smoothedRingPos.x + window.innerWidth / 2,
+      -this.smoothedRingPos.y + window.innerHeight / 2,
+      this.smoothedRingScale
+    );
 
     if (this.onRingHandTracked) {
       this.onRingHandTracked(this.smoothedRingPos, this.smoothedRingBone, this.smoothedRingNormal, this.smoothedRingScale);
@@ -276,23 +277,20 @@ class HandTracker {
 
   _solveConstructHand(landmarks) {
     const { screenPoints, threePoints } = this._toScreenAndThree(landmarks);
-    this._drawHandHUD(screenPoints, '#52ffaa', 'CONSTRUCT CASTER');
+    this._drawHandHUD(screenPoints, this._hex(this.palette.bright), 'CONSTRUCT CASTER');
 
-    // Position construct directly above palm center (between wrist and middle MCP)
     const pWrist = threePoints[0];
     const pMiddleMcp = threePoints[9];
     const pIndexMcp = threePoints[5];
     const pPinkyMcp = threePoints[17];
 
     const palmCenter = new THREE.Vector3().lerpVectors(pWrist, pMiddleMcp, 0.55);
-    // Project construct 60px outward from palm
     const vA = new THREE.Vector3().subVectors(pIndexMcp, pMiddleMcp);
     const vB = new THREE.Vector3().subVectors(pPinkyMcp, pMiddleMcp);
     let palmNormal = new THREE.Vector3().crossVectors(vA, vB).normalize();
     if (palmNormal.z < 0) palmNormal.negate();
 
     const rawPos = palmCenter.clone().add(palmNormal.clone().multiplyScalar(45));
-
     const handSpan = pWrist.distanceTo(pMiddleMcp);
     const rawScale = Math.max(0.7, Math.min(2.8, handSpan / 80.0));
 
@@ -306,12 +304,8 @@ class HandTracker {
       this.smoothedConstScale += (rawScale - this.smoothedConstScale) * this.alpha;
     }
 
-    // Gesture on Construct Hand: Fist or Thrust = Attack/Punch!
     const isFist = this._isHandClenched(landmarks);
-    if (this.onConstructGesture) {
-      this.onConstructGesture(isFist);
-    }
-
+    if (this.onConstructGesture) this.onConstructGesture(isFist);
     if (this.onConstructHandTracked) {
       this.onConstructHandTracked(this.smoothedConstPos, this.smoothedConstNormal, this.smoothedConstScale, isFist);
     }
@@ -325,9 +319,7 @@ class HandTracker {
 
     let curled = 0;
     for (let i = 0; i < 4; i++) {
-      if (dist(landmarks[tips[i]], wrist) < dist(landmarks[mcps[i]], wrist) * 1.1) {
-        curled++;
-      }
+      if (dist(landmarks[tips[i]], wrist) < dist(landmarks[mcps[i]], wrist) * 1.1) curled++;
     }
     return curled >= 3;
   }
@@ -356,7 +348,6 @@ class HandTracker {
       ctx.fill();
     }
 
-    // Hand role badge
     if (points[0]) {
       ctx.font = '10px Orbitron, sans-serif';
       ctx.fillStyle = color;
@@ -369,13 +360,14 @@ class HandTracker {
     const ctx = this.hudCtx;
     this.reticleAngle += 0.04;
     const r = 26 * scale;
+    const color = this._hex(this.palette.body);
 
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(this.reticleAngle);
-    ctx.strokeStyle = '#00ff88';
+    ctx.strokeStyle = color;
     ctx.lineWidth = 2;
-    ctx.shadowColor = '#00ff88';
+    ctx.shadowColor = color;
     ctx.shadowBlur = 10;
 
     for (let i = 0; i < 4; i++) {
@@ -401,9 +393,7 @@ class HandTracker {
     this.isDemoMode = false;
   }
 
-  /**
-   * Demo mode simulating both hands: Hand 1 tracks cursor, Hand 2 floats and punches!
-   */
+  /** Demo mode simulating both hands from the cursor. */
   tickDemo(delta) {
     if (!this.isDemoMode) return;
     this.demoTime += delta;
@@ -418,33 +408,27 @@ class HandTracker {
     // Hand 1 (Ring) follows mouse
     const rX = this.mousePos.x - cw / 2;
     const rY = -(this.mousePos.y - ch / 2) + Math.sin(this.demoTime * 2.2) * 10;
-    const rZ = -30;
-    const ringPos = new THREE.Vector3(rX, rY, rZ);
+    const ringPos = new THREE.Vector3(rX, rY, -30);
     const ringBone = new THREE.Vector3(0.1, 1, 0.1).normalize();
     const ringNormal = new THREE.Vector3(0, 0, 1);
     const ringScale = 1.35;
 
     this._drawTargetReticle(this.mousePos.x, this.mousePos.y, ringScale);
-
     if (this.onRingHandTracked) {
       this.onRingHandTracked(ringPos, ringBone, ringNormal, ringScale);
     }
 
-    // Hand 2 (Construct) floats to the left and punches periodically!
+    // Hand 2 (Construct) floats to the left and punches periodically
     if (this.isDemoSecondHandActive) {
       const cX = rX - 280 + Math.sin(this.demoTime * 1.5) * 30;
       const cY = rY + Math.cos(this.demoTime * 1.8) * 25;
-      const cZ = -20;
-      const constPos = new THREE.Vector3(cX, cY, cZ);
+      const constPos = new THREE.Vector3(cX, cY, -20);
       const constNormal = new THREE.Vector3(0.2, 0.1, 0.95).normalize();
-      const constScale = 1.4;
 
       const isPunching = (Math.sin(this.demoTime * 3) > 0.4);
-      if (this.onConstructGesture) {
-        this.onConstructGesture(isPunching);
-      }
+      if (this.onConstructGesture) this.onConstructGesture(isPunching);
       if (this.onConstructHandTracked) {
-        this.onConstructHandTracked(constPos, constNormal, constScale, isPunching);
+        this.onConstructHandTracked(constPos, constNormal, 1.4, isPunching);
       }
     }
   }
